@@ -12,3 +12,5 @@
 /uncompyle6.egg-info
 __pycache__
 build
+.idea
+.coverage
