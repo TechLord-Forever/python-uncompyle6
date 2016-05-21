@@ -81,11 +81,15 @@ def data_driven_test(test_dir_pattern, *file_patterns):
 
             result = main(fullpath, '.', [sub_test], [], do_verify=True)
             _, _, failed_files, failed_verify = result
+
+            failed_fmt = 'failed to {action} {test}-{sub_test}'
             if failed_files != 0:
-                msg = 'failed to decompile {fullpath}'.format(**locals())
+                action = 'uncompyle'
+                msg = failed_fmt.format(**locals())
                 raise Exception(msg)
             elif failed_verify != 0:
-                msg = 'failed to decompile {fullpath}'.format(**locals())
+                action = 'verify'
+                msg = failed_fmt.format(**locals())
                 raise Exception(msg)
 
             remove_dis_files(sub_test)
