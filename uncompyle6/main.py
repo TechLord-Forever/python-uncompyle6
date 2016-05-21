@@ -139,7 +139,8 @@ def main(in_base, out_base, files, codes, outfile=None,
                 outstream.close()
                 if do_verify:
                     try:
-                        msg = verify.compare_code_with_srcfile(infile, outfile)
+                        filename = check_object_path(infile)
+                        msg = verify.compare_code_with_srcfile(filename, outfile)
                         if not outfile:
                             if not msg:
                                 print('\n# okay decompiling %s' % infile)
