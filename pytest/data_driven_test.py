@@ -13,16 +13,39 @@ def get_srcdir():
     return os.path.realpath(filename)
 
 
-test_dir = os.path.join(get_srcdir(), '..', 'test')
+tests_root_dir = os.path.realpath(os.path.join(get_srcdir(), '..', 'test'))
 
 
 def remove_dis_files(sub_test):
 
-    remove_passed, remove_failed = True, False
+    remove_passed, remove_failed = True, True
 
-    dis_path = sub_test + '_dis'
-    if remove_passed and (os.path.exists(dis_path) or remove_failed):
-        os.unlink(dis_path)
+    try:
+        dis_path = sub_test + '_dis'
+        if remove_passed and (os.path.exists(dis_path) or remove_failed):
+            os.unlink(dis_path)
+    except:
+        pass
+
+
+def get_test_name(path):
+    return path.replace(tests_root_dir, '').strip(r'\/')
+
+
+def get_tests(test_dir_pattern, *file_patterns):
+
+    return sorted(
+
+        (get_test_name(tests_root), filename)
+        for root, dirs, files in os.walk(tests_root_dir)
+        for tests_root in [root.replace(tests_root_dir, '')]
+        for filename in files
+        for file_pattern in file_patterns
+
+        if fnmatch.fnmatch(filename, file_pattern)
+        if fnmatch.fnmatch(tests_root, test_dir_pattern)
+        if filename != '__init__.py'
+    )
 
 
 def data_driven_test(test_dir_pattern, *file_patterns):
@@ -39,20 +62,7 @@ def data_driven_test(test_dir_pattern, *file_patterns):
 
     :return: Data driven test decorator.
     """
-
-    tests = sorted(
-
-        (tests_root, filename)
-
-        for root, dirs, files in os.walk(test_dir)
-        for tests_root in [root.replace(test_dir + '/', '')]
-        for filename in files
-        for file_pattern in file_patterns
-
-        if fnmatch.fnmatch(filename, file_pattern)
-        if fnmatch.fnmatch(tests_root, test_dir_pattern)
-        if filename != '__init__.py'
-    )
+    tests = get_tests(test_dir_pattern.join('**'), *file_patterns)
 
     def decorator(fn):
         """
@@ -66,33 +76,38 @@ def data_driven_test(test_dir_pattern, *file_patterns):
         :return: The decorated function.
         """
 
-        @pytest.mark.parametrize('test, sub_test', tests)
-        def run_test(test, sub_test):
+        @pytest.mark.parametrize('test_name, sub_test_name', tests)
+        def run_test(test_name, sub_test_name):
             """
             Perform the data driven test, run the file specified by sub test
             through uncompyle and verify the output.
 
-            :param test: The test directory.
-            :param sub_test: The test file to uncompyle.
+            :param test_name: The test directory.
+            :param sub_test_name: The test file to uncompyle.
             """
+            try:
+                fn(test_name, sub_test_name)
 
-            fullpath = os.path.join(test_dir, test)
-            py_compile.compile(os.path.join(fullpath, sub_test))
+                fullpath = os.path.join(tests_root_dir, test_name)
+                py_compile.compile(os.path.join(fullpath, sub_test_name))
 
-            result = main(fullpath, '.', [sub_test], [], do_verify=True)
-            _, _, failed_files, failed_verify = result
+                result = main(fullpath, '.', [sub_test_name], [], do_verify=True)
+                _, _, failed_files, failed_verify = result
 
-            failed_fmt = 'failed to {action} {test}-{sub_test}'
-            if failed_files != 0:
-                action = 'uncompyle'
-                msg = failed_fmt.format(**locals())
-                raise Exception(msg)
-            elif failed_verify != 0:
-                action = 'verify'
-                msg = failed_fmt.format(**locals())
-                raise Exception(msg)
+                failed_fmt = 'failed to {action} {test_name}-{sub_test_name}'
 
-            remove_dis_files(sub_test)
+                if failed_files != 0:
+                    action = 'uncompyle'
+                    msg = failed_fmt.format(**locals())
+                    raise Exception(msg)
+
+                elif failed_verify != 0:
+                    action = 'verify'
+                    msg = failed_fmt.format(**locals())
+                    raise Exception(msg)
+
+            finally:
+                remove_dis_files(sub_test_name)
 
         return run_test
 

@@ -10,10 +10,11 @@ from uncompyle6.parser import ParserError
 from uncompyle6.load import load_module
 
 def uncompyle(version, co, out=None, showasm=False, showast=False,
-              timestamp=None, showgrammar=False, code_objects={}):
+              timestamp=None, showgrammar=False, code_objects=None):
     """
     disassembles and deparses a given code block 'co'
     """
+    code_objects = code_objects or {}
 
     assert iscode(co)
 
@@ -149,7 +150,10 @@ def main(in_base, out_base, files, codes, outfile=None,
                                 print('\n# %s\n\t%s', infile, msg)
                     except verify.VerifyCmpError as e:
                         verify_failed_files += 1
-                        os.rename(outfile, outfile + '_unverified')
+                        unverified = outfile + '_unverified'
+                        if os.path.exists(unverified):
+                            os.unlink(unverified)
+                        os.rename(outfile, unverified)
                         if not outfile:
                             print("### Error Verifiying %s" % filename,  file=sys.stderr)
                             print(e, file=sys.stderr)
