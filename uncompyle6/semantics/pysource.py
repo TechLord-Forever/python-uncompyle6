@@ -1523,7 +1523,7 @@ class SourceWalker(GenericASTTraversal, object):
         self.write(fmt[i:])
 
     def default(self, node):
-        mapping = MAP.get(node, MAP_DIRECT)
+        mapping = self._get_mapping(node)
         table = mapping[0]
         key = node
 
@@ -1852,6 +1852,11 @@ class SourceWalker(GenericASTTraversal, object):
             self.println(repr(ast))
 
         return ast
+
+    @classmethod
+    def _get_mapping(cls, node):
+        return MAP.get(node, MAP_DIRECT)
+
 
 def deparse_code(version, co, out=sys.stdout, showasm=False, showast=False,
                  showgrammar=False, code_objects={}, compile_mode='exec'):
